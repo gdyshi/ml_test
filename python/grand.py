@@ -1,143 +1,116 @@
-import copy, numpy as np
-
-np.random.seed(0)
+import numpy as np
 
 
-#  计算sigmoid非线性函数  非线性变换  输出时使用 该函数多用于回归中
-# 前向传播中使用
 def sigmoid(x):
     output = 1 / (1 + np.exp(-x))
     return output
 
 
-# convert output of sigmoid function to its derivative  函数求导
-# 用于反向传播中
 def sigmoid_output_to_derivative(output):
     return output * (1 - output)
 
 
-# training dataset generation   数值转化     该例子中2进制  8位的加法
-int2binary = {}
-binary_dim = 8
+batch_size = 500
+# batch_size = 1
+learning_rate = 2
 
-largest_number = pow(2, binary_dim)  # 2**8
-binary = np.unpackbits(
-    np.array([range(largest_number)], dtype=np.uint8).T, axis=1)
-for i in range(largest_number):
-    int2binary[i] = binary[i]
+x_dim = 1
+y_dim = 1
+l0_dim = x_dim
+# l1_dim = 20
+l1_dim = 5
+l2_dim = y_dim
 
-# input variables
-alpha = 0.1
-input_dim = 2  # 输入维度  a b
-hidden_dim = 16  # 中间层维度
-output_dim = 1  # 输出维度  c     c=a+b
+ebsilon = 0.01
 
-# initialize neural network weights 初始化网络权重  -1使其在 【-1，1】之间
-synapse_0 = 2 * np.random.random((input_dim, hidden_dim)) - 1
-synapse_1 = 2 * np.random.random((hidden_dim, output_dim)) - 1
-synapse_h = 2 * np.random.random((hidden_dim, hidden_dim)) - 1
 
-synapse_0_update = np.zeros_like(synapse_0)  # 更新参数的值  权重
-synapse_1_update = np.zeros_like(synapse_1)
-synapse_h_update = np.zeros_like(synapse_h)
+def forward(A0, Y, w1, b1, w2, b2):
+    Z1 = np.add(np.dot(w1.transpose(), A0), b1)
+    A1 = sigmoid(Z1)
+    Z2 = np.add(np.dot(w2.transpose(), A1), b2)
+    A2 = sigmoid(Z2)
+    Y_ = A2
+    cost = (Y_ - Y) ** 2 / 2
+    loss = cost.sum() / batch_size
+    return Z1, A1, Z2, A2, Y_, loss
 
-# training logic  训练计算
-for j in range(250000):
 
-    # generate a simple addition problem (a + b = c)
-    # a_int 随机找一个整数值
-    a_int = np.random.randint(largest_number / 2)  # int version
-    # 将a_int 转化成2进制数
-    a = int2binary[a_int]  # binary encoding
-    # 与a同
-    b_int = np.random.randint(largest_number / 2)  # int version
-    b = int2binary[b_int]  # binary encoding
+def backward(Y, Y_, A0, A1, A2, Z1, Z2, w1, w2, b1, b2):
+    d_cost = (Y_ - Y) / batch_size
+    d_A2 = d_cost
 
-    # true answer
-    #  c_int 为label 值
-    c_int = a_int + b_int
-    c = int2binary[c_int]
+    d_A2_Z2 = sigmoid_output_to_derivative(A2)
+    d_Z2 = d_A2 * d_A2_Z2
+    d_Z2_b2 = np.ones_like(b2)
+    d_b2 = d_Z2_b2 * d_Z2.sum()
+    d_Z2_w2 = A1
+    d_w2 = np.dot(d_Z2_w2, d_Z2.transpose())
+    d_Z2_A1 = w2
+    d_A1 = np.dot(d_Z2_A1, d_Z2)
 
-    # where we'll store our best guess (binary encoded)
-    # d 为预测值
-    d = np.zeros_like(c)
+    d_A1_Z1 = sigmoid_output_to_derivative(A1)
+    # d_A1_Z1 = sigmoid_output_to_derivative(Z1)
+    d_Z1 = d_A1 * d_A1_Z1
+    d_Z1_b1 = np.ones_like(b1)
+    d_b1 = d_Z1_b1 * d_Z1.sum()
+    d_Z1_w1 = A0
+    d_w1 = np.dot(d_Z1_w1, d_Z1.transpose())
+    d_Z1_A0 = w1
+    d_A0 = np.dot(d_Z1_A0, d_Z1)
+    return d_w1, d_w2, d_b1, d_b2
 
-    overallError = 0
 
-    layer_2_deltas = list()
-    layer_1_values = list()
-    layer_1_values.append(np.zeros(hidden_dim))
+def init(batch_size):
+    x_data = np.linspace(-1, 1, batch_size)
+    y_data = x_data * 0.2 + 0.3
+    X = x_data.reshape((x_dim, batch_size))
+    Y = y_data.reshape((y_dim, batch_size))
 
-    # moving along the positions in the binary encoding
-    # 前向传播
-    for position in range(binary_dim):
-        # generate input and output 输出输入
-        X = np.array([[a[binary_dim - position - 1], b[binary_dim - position - 1]]])
-        y = np.array([[c[binary_dim - position - 1]]]).T
+    w1 = np.random.random((l0_dim, l1_dim))
+    b1 = np.zeros((l1_dim, 1))
+    w2 = np.random.random((l1_dim, l2_dim))
+    b2 = np.zeros((l2_dim, 1))
 
-        # hidden layer (input ~+ prev_hidden)  计算隐藏层的输出 layer_1  是输入层+当前隐藏层权值的递归
-        layer_1 = sigmoid(np.dot(X, synapse_0) + np.dot(layer_1_values[-1], synapse_h))
+    return X, Y, w1, b1, w2, b2
 
-        # output layer (new binary representation)  输出层预测  注：输出层权重不递归
-        layer_2 = sigmoid(np.dot(layer_1, synapse_1))  # layer_1*w1
 
-        # did we miss?... if so by how much?  
-        layer_2_error = y - layer_2
-        # 对代价函数求导
-        # layer_2_deltas  loss的前向传播
-        # layer2_delta = error * 当前层输出值的导数值  ################
-        layer_2_deltas.append((layer_2_error) * sigmoid_output_to_derivative(layer_2))
-        # 用来打印
-        overallError += np.abs(layer_2_error[0])
+def grand_check():
+    X, Y, w1, b1, w2, b2 = init(batch_size)
+    A0 = X
+    # w10
+    Z1, A1, Z2, A2, Y_, loss = forward(A0, Y, w1, b1, w2, b2)
+    d_w1, d_w2, d_b1, d_b2 = backward(Y, Y_, A0, A1, A2, Z1, Z2, w1, w2, b1, b2)
+    grand = [d_w1.transpose(), d_b1, d_w2, d_b2]
+    w1[0][0] -= ebsilon
+    _, _, _, _, _, loss_w10_i = forward(A0, Y, w1, b1, w2, b2)
+    w1[0][0] += ebsilon * 2
+    _, _, _, _, _, loss_w10_x = forward(A0, Y, w1, b1, w2, b2)
+    # sita = [w1.transpose(), b1, w2, b2]
+    d_w10_approx = (loss_w10_x - loss_w10_i) / (2 * ebsilon)
+    check_value = np.sum((d_w10_approx - d_w1[0][0]) * (d_w10_approx - d_w1[0][0])) / (
+    np.sum(d_w10_approx * d_w10_approx) + np.sum(d_w1[0][0] * d_w1[0][0]))
+    print(d_w10_approx)
+    print(d_w1[0][0])
+    print(check_value)
+    # print(d_approx)
+    # print(grand)
+    # print(check_value)
 
-        # decode estimate so we can print it out  
-        d[binary_dim - position - 1] = np.round(layer_2[0][0])
 
-        # store hidden layer so we can use it in the next timestep  保存layer_1 用于反向传播隐藏层
-        layer_1_values.append(copy.deepcopy(layer_1))
-    # 先保存 用于反向传播
-    future_layer_1_delta = np.zeros(hidden_dim)
+def train():
+    X, Y, w1, b1, w2, b2 = init(batch_size)
+    A0 = X
+    for i in range(10000):
+        Z1, A1, Z2, A2, Y_, loss = forward(A0, Y, w1, b1, w2, b2)
+        d_w1, d_w2, d_b1, d_b2 = backward(Y, Y_, A0, A1, A2, Z1, Z2, w1, w2, b1, b2)
+        w2 -= learning_rate * d_w2
+        b2 -= learning_rate * d_b2
+        w1 -= learning_rate * d_w1
+        b1 -= learning_rate * d_b1
+        if 0 == i % 500:
+            print(loss)
 
-    # 反向传播计算
-    for position in range(binary_dim):
-        X = np.array([[a[position], b[position]]])  # 反过来计算回去  位置
-        layer_1 = layer_1_values[-position - 1]  # 当前状态值
-        prev_layer_1 = layer_1_values[-position - 2]  # 前一状态值 偏1位
 
-        # error at output layer  
-        layer_2_delta = layer_2_deltas[-position - 1]  # 赋值给layer_2_delta
-        # error at hidden layer
-        # layer_1_delta :layer_1层的残差-- 当前循环残差乘以隐藏层权重 + 由前一层残差值乘以当前层值的导数
-        layer_1_delta = (future_layer_1_delta.dot(synapse_h.T) + \
-                         layer_2_delta.dot(synapse_1.T)) * sigmoid_output_to_derivative(layer_1)
+# train()
+grand_check()
 
-        # let's update all our weights so we can try again  权重值的更新
-        # w1更新
-        synapse_1_update += np.atleast_2d(layer_1).T.dot(layer_2_delta)
-        # wh更新
-        synapse_h_update += np.atleast_2d(prev_layer_1).T.dot(layer_1_delta)
-        # w2更新
-        synapse_0_update += X.T.dot(layer_1_delta)
-
-        future_layer_1_delta = layer_1_delta
-
-    synapse_0 += synapse_0_update * alpha
-    synapse_1 += synapse_1_update * alpha
-    synapse_h += synapse_h_update * alpha
-
-    synapse_0_update *= 0
-    synapse_1_update *= 0
-    synapse_h_update *= 0
-
-    # print out progress  
-    if (j % 1000 == 0):
-        print("Error:" + str(overallError))
-        print("Pred:" + str(d))
-        print("True:" + str(c))
-
-        out = 0
-        for index, x in enumerate(reversed(d)):
-            out += x * pow(2, index)
-        print(str(a_int) + " + " + str(b_int) + " = " + str(out))
-
-        print("------------")

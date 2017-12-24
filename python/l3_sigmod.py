@@ -34,6 +34,8 @@ b2 = np.zeros((l2_dim, 1))
 w3 = np.random.random((l2_dim, l3_dim))
 b3 = np.zeros((l3_dim, 1))
 
+
+
 for i in range(10000):
     A0 = X
     # def forward:
