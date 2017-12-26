@@ -77,20 +77,56 @@ def init(batch_size):
 def grand_check():
     X, Y, w1, b1, w2, b2 = init(batch_size)
     A0 = X
-    # w10
     Z1, A1, Z2, A2, Y_, loss = forward(A0, Y, w1, b1, w2, b2)
     d_w1, d_w2, d_b1, d_b2 = backward(Y, Y_, A0, A1, A2, Z1, Z2, w1, w2, b1, b2)
-    grand = [d_w1.transpose(), d_b1, d_w2, d_b2]
-    w1[0][0] -= ebsilon
-    _, _, _, _, _, loss_w10_i = forward(A0, Y, w1, b1, w2, b2)
-    w1[0][0] += ebsilon * 2
-    _, _, _, _, _, loss_w10_x = forward(A0, Y, w1, b1, w2, b2)
-    # sita = [w1.transpose(), b1, w2, b2]
-    d_w10_approx = (loss_w10_x - loss_w10_i) / (2 * ebsilon)
-    check_value = np.sum((d_w10_approx - d_w1[0][0]) * (d_w10_approx - d_w1[0][0])) / (
-    np.sum(d_w10_approx * d_w10_approx) + np.sum(d_w1[0][0] * d_w1[0][0]))
-    print(d_w10_approx)
-    print(d_w1[0][0])
+    sita = []
+    sita_approx = []
+    for i in range(l0_dim):
+        for j in range(l1_dim):
+            w1[i][j] -= ebsilon
+            _, _, _, _, _, loss_i = forward(A0, Y, w1, b1, w2, b2)
+            w1[i][j] += ebsilon * 2
+            _, _, _, _, _, loss_x = forward(A0, Y, w1, b1, w2, b2)
+            w1[i][j] -= ebsilon
+            d_approx = (loss_x - loss_i) / (2 * ebsilon)
+            sita_approx.append(d_approx)
+            sita.append(d_w1[i][j])
+    for i in range(l1_dim):
+        b1[i] -= ebsilon
+        _, _, _, _, _, loss_i = forward(A0, Y, w1, b1, w2, b2)
+        b1[i] += ebsilon * 2
+        _, _, _, _, _, loss_x = forward(A0, Y, w1, b1, w2, b2)
+        b1[i] -= ebsilon
+        d_approx = (loss_x - loss_i) / (2 * ebsilon)
+        sita_approx.append(d_approx)
+        sita.append(d_b1[i])
+    for i in range(l1_dim):
+        for j in range(l2_dim):
+            w2[i][j] -= ebsilon
+            _, _, _, _, _, loss_i = forward(A0, Y, w1, b1, w2, b2)
+            w2[i][j] += ebsilon * 2
+            _, _, _, _, _, loss_x = forward(A0, Y, w1, b1, w2, b2)
+            w2[i][j] -= ebsilon
+            d_approx = (loss_x - loss_i) / (2 * ebsilon)
+            sita_approx.append(d_approx)
+            sita.append(d_w2[i][j])
+    for i in range(l2_dim):
+        b2[i] -= ebsilon
+        _, _, _, _, _, loss_i = forward(A0, Y, w1, b1, w2, b2)
+        b2[i] += ebsilon * 2
+        _, _, _, _, _, loss_x = forward(A0, Y, w1, b1, w2, b2)
+        b2[i] -= ebsilon
+        d_approx = (loss_x - loss_i) / (2 * ebsilon)
+        sita_approx.append(d_approx)
+        sita.append(d_b2[i])
+
+    sita_approx = np.array(sita_approx)
+    sita = np.array(sita)
+    # w10
+    check_value = np.sum((sita_approx - sita) * (sita_approx - sita)) / (
+            np.sum(sita_approx * sita_approx) + np.sum(sita * sita))
+    print(sita_approx)
+    print(sita)
     print(check_value)
     # print(d_approx)
     # print(grand)
