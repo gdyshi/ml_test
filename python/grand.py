@@ -41,18 +41,17 @@ def backward(Y, Y_, A0, A1, A2, Z1, Z2, w1, w2, b1, b2):
 
     d_A2_Z2 = sigmoid_output_to_derivative(A2)
     d_Z2 = d_A2 * d_A2_Z2
-    d_Z2_b2 = np.ones_like(b2)
-    d_b2 = d_Z2_b2 * d_Z2.sum()
+    d_Z2_b2 = np.ones((np.size(b2), np.size(d_Z2)))
+    d_b2 = np.dot(d_Z2_b2, d_Z2.transpose())
     d_Z2_w2 = A1
     d_w2 = np.dot(d_Z2_w2, d_Z2.transpose())
     d_Z2_A1 = w2
     d_A1 = np.dot(d_Z2_A1, d_Z2)
 
     d_A1_Z1 = sigmoid_output_to_derivative(A1)
-    # d_A1_Z1 = sigmoid_output_to_derivative(Z1)
     d_Z1 = d_A1 * d_A1_Z1
-    d_Z1_b1 = np.ones_like(b1)
-    d_b1 = d_Z1_b1 * d_Z1.sum()
+    d_Z1_b1 = np.ones((np.size(b1), np.size(d_Z1, 1)))
+    d_b1 = (d_Z1_b1 * d_Z1).sum(axis=1).reshape(5,1)
     d_Z1_w1 = A0
     d_w1 = np.dot(d_Z1_w1, d_Z1.transpose())
     d_Z1_A0 = w1
@@ -122,15 +121,11 @@ def grand_check():
 
     sita_approx = np.array(sita_approx)
     sita = np.array(sita)
-    # w10
     check_value = np.sum((sita_approx - sita) * (sita_approx - sita)) / (
             np.sum(sita_approx * sita_approx) + np.sum(sita * sita))
     print(sita_approx)
     print(sita)
     print(check_value)
-    # print(d_approx)
-    # print(grand)
-    # print(check_value)
 
 
 def train():
@@ -144,7 +139,7 @@ def train():
         w1 -= learning_rate * d_w1
         b1 -= learning_rate * d_b1
         if 0 == i % 500:
-            print(loss)
+            print('step:'+str(i)+'    loss:'+str(loss))
 
 
 # train()
