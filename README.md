@@ -50,7 +50,7 @@ print(arr.transpose())
 > 使用现有机器学习框架所提供的测试功能，如TensorFlow的test_util.TensorFlowTestCase类
 
 ## 针对具体算法做相应的算法验证
-- [梯度检验](http://ufldl.stanford.edu/wiki/index.php/%E6%A2%AF%E5%BA%A6%E6%A3%80%E9%AA%8C%E4%B8%8E%E9%AB%98%E7%BA%A7%E4%BC%98%E5%8C%96)
+- [梯度检验](http://ufldl.stanford.edu/wiki/index.php/%E6%A2%AF%E5%BA%A6%E6%A3%80%E9%AA%8C%E4%B8%8E%E9%AB%98%E7%BA%A7%E4%BC%98%E5%8C%96) [代码实现](https://github.com/gdyshi/ml_test/blob/master/python/grand.py)
 > 在代码中使用导数公式来实现反向传播，验证时就根据极限法则来验证导数公式的正确性
 
 ---
